@@ -1,6 +1,6 @@
 import os
 from typing import BinaryIO
-
+import argparse
 
 def find_chunk_boundaries(
     file: BinaryIO,
@@ -49,14 +49,21 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-## Usage
-with open(..., "rb") as f:
-    num_processes = 4
-    boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input_file", type=str, help="The input file to process",required=True)
+    parser.add_argument("--num_processes", "-n", default=4, type=int, help="The number of processes to use",required=False)
+    parser.add_argument("--split_special_token", "-s", default="<|endoftext|>", type=str, help="The special token to use to split the file",required=False)
+    args = parser.parse_args()
 
-    # The following is a serial implementation, but you can parallelize this
-    # by sending each start/end pair to a set of processes.
-    for start, end in zip(boundaries[:-1], boundaries[1:]):
-        f.seek(start)
-        chunk = f.read(end - start).decode("utf-8", errors="ignore")
-        # Run pre-tokenization on your chunk and store the counts for each pre-token
+    with open(args.input_file, "rb") as f:
+        boundaries = find_chunk_boundaries(f, args.num_processes, args.split_special_token.encode())
+
+        # The following is a serial implementation, but you can parallelize this
+        # by sending each start/end pair to a set of processes.
+        for start, end in zip(boundaries[:-1], boundaries[1:]):
+            f.seek(start)
+            chunk = f.read(end - start).decode("utf-8", errors="ignore")
+            # Run pre-tokenization on your chunk and store the counts for each pre-token
+            chunk_tokens = find_chunk_boundaries(f, args.num_processes, args.split_special_token.encode())
+            print(chunk_tokens)
